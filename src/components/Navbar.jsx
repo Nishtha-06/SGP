@@ -11,7 +11,7 @@ export default function Navbar() {
   const profileRef = useRef(null);
 
   // Check if we are in a logged-in route
-  const isLoggedInRoute = ['/dashboard', '/recommendations', '/projects', '/project-details'].includes(location.pathname);
+  const isLoggedInRoute = ['/dashboard', '/recommendations', '/recommendation-results', '/projects'].includes(location.pathname);
 
   useEffect(() => {
     const handleScroll = () => {
