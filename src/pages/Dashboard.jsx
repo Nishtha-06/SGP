@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { 
   Bot, 
   FileText, 
@@ -15,9 +16,16 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState('Overview');
+
   return (
-    <main className="flex-grow pt-24 pb-12 min-h-screen bg-slate-50/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <main className="flex-grow pt-24 pb-12 min-h-screen bg-slate-50/50 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-60 pointer-events-none z-0"></div>
+      <div className="absolute top-20 left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-400/20 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] rounded-full bg-blue-500/10 blur-[150px] pointer-events-none" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* PAGE HEADER */}
         <div className="mb-8 animate-fade-in-up">
@@ -33,180 +41,252 @@ export default function Dashboard() {
           
           {/* MAIN CONTENT - left 3 columns on large screens */}
           <div className="lg:col-span-3 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              
-              {/* Card 1: AI Recommendations */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow group flex flex-col h-full relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Bot className="w-20 h-20 text-blue-600" />
-                </div>
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 border border-blue-100 relative z-10">
-                  <Bot className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2 relative z-10">AI Recommendations</h3>
-                <p className="text-sm text-gray-500 mb-6 flex-grow relative z-10">
-                  Receive personalized project ideas based on your interests and skills.
-                </p>
-                <button className="w-full py-2.5 px-4 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-2 relative z-10 group/btn">
-                  View Recommendations
-                  <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+            
+            {/* Tabs Navigation */}
+            <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 inline-flex">
+              {['Overview', 'Group Status', 'Documents'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                    activeTab === tab
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab}
                 </button>
-              </div>
-
-              {/* Card 2: Active Proposal */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
-                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 border border-indigo-100">
-                  <FileText className="w-6 h-6 text-indigo-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Active Proposal</h3>
-                <p className="text-base font-semibold text-blue-600 mb-3 truncate">Smart Campus Navigation</p>
-                
-                <div className="space-y-4 mb-6 flex-grow text-sm">
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Status</span>
-                    <span className="bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-bold">Reviewing</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Faculty Guide</span>
-                    <span className="font-semibold text-gray-900">Dr. Smith</span>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1 text-gray-600">
-                      <span>Progress</span>
-                      <span>60%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
-                    </div>
-                  </div>
-                </div>
-                
-                <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:border-blue-300 hover:text-blue-600 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
-                  View Proposal
-                </button>
-              </div>
-
-              {/* Card 3: Next Milestone */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
-                <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center mb-4 border border-emerald-100">
-                  <Calendar className="w-6 h-6 text-emerald-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Next Milestone</h3>
-                <p className="text-base font-semibold text-emerald-600 mb-4">Phase 1 Submission</p>
-                
-                <div className="space-y-3 mb-6 flex-grow text-sm">
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Due Date</span>
-                    <span className="font-semibold text-gray-900">Oct 15, 2026</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Remaining</span>
-                    <span className="font-bold text-red-500 bg-red-50 px-2.5 py-0.5 rounded-full text-xs">5 Days</span>
-                  </div>
-                  <div className="pt-2">
-                     <div className="flex items-center gap-2 text-xs font-medium text-emerald-600 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
-                        <AlertCircle className="w-4 h-4" />
-                        Almost there! Keep it up.
-                     </div>
-                  </div>
-                </div>
-                
-                <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:border-emerald-300 hover:text-emerald-700 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
-                  View Timeline
-                </button>
-              </div>
-
-              {/* Card 4: Group Status */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
-                <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center mb-4 border border-purple-100">
-                  <Users className="w-6 h-6 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Group Status</h3>
-                
-                <div className="space-y-3 mb-6 flex-grow text-sm">
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Leader</span>
-                    <span className="font-semibold text-gray-900">Alice Brown</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Members</span>
-                    <span className="font-semibold text-blue-600">3/4 Joined</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Guide</span>
-                    <span className="font-semibold text-gray-900">Dr. Smith</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Stage</span>
-                    <span className="bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full text-xs font-bold">Ideation</span>
-                  </div>
-                </div>
-                
-                <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:border-purple-300 hover:text-purple-700 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
-                  View Group
-                </button>
-              </div>
-
-              {/* Card 5: Submitted Proposal */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
-                <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center mb-4 border border-teal-100">
-                  <FileCheck className="w-6 h-6 text-teal-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Submitted Proposal</h3>
-                
-                <div className="space-y-3 mb-6 flex-grow text-sm">
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Version</span>
-                    <span className="font-semibold text-gray-900">v1.2 (Final)</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Submitted</span>
-                    <span className="font-semibold text-gray-900">Sep 28, 2026</span>
-                  </div>
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span className="font-medium">Approval</span>
-                    <span className="bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1">
-                      <FileCheck className="w-3 h-3" /> Approved
-                    </span>
-                  </div>
-                </div>
-                
-                <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </button>
-              </div>
-
-              {/* Card 6: Notifications */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100">
-                    <Bell className="w-6 h-6 text-rose-600" />
-                  </div>
-                  <span className="flex h-3 w-3 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Notifications</h3>
-                
-                <div className="space-y-3 mb-6 flex-grow">
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
-                    <p className="font-semibold text-gray-900 mb-0.5">Faculty Feedback</p>
-                    <p className="text-gray-500 text-xs">Dr. Smith reviewed your proposal outline.</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
-                    <p className="font-semibold text-gray-900 mb-0.5">Upcoming Deadline</p>
-                    <p className="text-gray-500 text-xs">Phase 1 submission is due in 5 days.</p>
-                  </div>
-                </div>
-                
-                <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:border-gray-300 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
-                  View All
-                </button>
-              </div>
-
+              ))}
             </div>
+
+            {/* Tab Contents */}
+            {activeTab === 'Overview' && (
+              <div className="space-y-6 animate-fade-in-up">
+                {/* Progress Bar */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-bold text-gray-900">Current Phase</h3>
+                    <span className="text-sm font-semibold text-blue-600">Phase 1: Ideation</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                    <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '25%' }}></div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Active Proposal Card */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 border border-indigo-100">
+                      <FileText className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">Active Proposal</h3>
+                    <p className="text-base font-semibold text-blue-600 mb-3 truncate">Smart Campus Navigation</p>
+                    
+                    <div className="space-y-4 mb-6 flex-grow text-sm">
+                      <div className="flex justify-between items-center text-gray-600">
+                        <span className="font-medium">Status</span>
+                        <span className="bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-bold">Reviewing</span>
+                      </div>
+                      <div className="flex justify-between items-center text-gray-600">
+                        <span className="font-medium">Faculty Guide</span>
+                        <span className="font-semibold text-gray-900">Dr. Smith</span>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold mb-1 text-gray-600">
+                          <span>Progress</span>
+                          <span>60%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:border-blue-300 hover:text-blue-600 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
+                      View Proposal
+                    </button>
+                  </div>
+
+                  {/* Next Milestone Card */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center mb-4 border border-emerald-100">
+                      <Calendar className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">Next Milestone</h3>
+                    <p className="text-base font-semibold text-emerald-600 mb-4">Phase 1 Submission</p>
+                    
+                    <div className="space-y-3 mb-6 flex-grow text-sm">
+                      <div className="flex justify-between items-center text-gray-600">
+                        <span className="font-medium">Due Date</span>
+                        <span className="font-semibold text-gray-900">Oct 15, 2026</span>
+                      </div>
+                      <div className="flex justify-between items-center text-gray-600">
+                        <span className="font-medium">Remaining</span>
+                        <span className="font-bold text-red-500 bg-red-50 px-2.5 py-0.5 rounded-full text-xs">5 Days</span>
+                      </div>
+                      <div className="pt-2">
+                         <div className="flex items-center gap-2 text-xs font-medium text-emerald-600 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                            <AlertCircle className="w-4 h-4" />
+                            Almost there! Keep it up.
+                         </div>
+                      </div>
+                    </div>
+                    
+                    <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:border-emerald-300 hover:text-emerald-700 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
+                      View Timeline
+                    </button>
+                  </div>
+
+                  {/* Notifications Card */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100">
+                        <Bell className="w-6 h-6 text-rose-600" />
+                      </div>
+                      <span className="flex h-3 w-3 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Notifications</h3>
+                    
+                    <div className="space-y-3 mb-6 flex-grow">
+                      <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+                        <p className="font-semibold text-gray-900 mb-0.5">Faculty Feedback</p>
+                        <p className="text-gray-500 text-xs">Dr. Smith reviewed your proposal outline.</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+                        <p className="font-semibold text-gray-900 mb-0.5">Upcoming Deadline</p>
+                        <p className="text-gray-500 text-xs">Phase 1 submission is due in 5 days.</p>
+                      </div>
+                    </div>
+                    
+                    <button className="w-full py-2.5 px-4 bg-white border border-gray-200 hover:border-gray-300 rounded-xl text-sm font-semibold text-gray-700 transition-colors duration-200 flex items-center justify-center gap-2">
+                      View All
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'Group Status' && (
+              <div className="space-y-6 animate-fade-in-up">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-100">
+                        <Users className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">Group Status</h3>
+                        <p className="text-sm text-gray-500">Manage your project team</p>
+                      </div>
+                    </div>
+                    <button className="py-2 px-4 bg-purple-50 hover:bg-purple-600 text-purple-600 hover:text-white rounded-xl text-sm font-semibold transition-colors duration-200 flex items-center gap-2 self-start sm:self-auto">
+                      <Plus className="w-4 h-4" />
+                      Invite Members
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm">
+                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold">A</div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Alice Brown</p>
+                          <p className="text-gray-500 text-xs">alice.brown@example.com</p>
+                        </div>
+                      </div>
+                      <span className="bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full text-xs font-bold">Leader</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">S</div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Student Name</p>
+                          <p className="text-gray-500 text-xs">student@example.com</p>
+                        </div>
+                      </div>
+                      <span className="bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full text-xs font-bold">Member</span>
+                    </div>
+
+                    <div className="flex justify-between items-center p-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl">
+                      <span className="text-gray-500 font-medium">Available Slot</span>
+                      <span className="text-gray-400 text-xs font-semibold">Pending Invite</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl">
+                      <span className="text-gray-500 font-medium">Available Slot</span>
+                      <span className="text-gray-400 text-xs font-semibold">Empty</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="flex justify-between items-center text-gray-600 text-sm">
+                      <span className="font-medium">Faculty Guide</span>
+                      <span className="font-semibold text-gray-900">Dr. Smith</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'Documents' && (
+              <div className="space-y-6 animate-fade-in-up">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center border border-teal-100">
+                      <FileCheck className="w-6 h-6 text-teal-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">Documents & Submissions</h3>
+                      <p className="text-sm text-gray-500">Manage all your project files</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 group hover:border-teal-200 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-white rounded-lg border border-gray-200 text-teal-600">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900">Project Proposal v1.2</h4>
+                          <p className="text-xs text-gray-500 flex items-center gap-2">
+                            Submitted Sep 28, 2026 
+                            <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                            <span className="text-green-600 font-semibold flex items-center gap-1"><FileCheck className="w-3 h-3" /> Approved</span>
+                          </p>
+                        </div>
+                      </div>
+                      <button className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
+                        <Download className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 group hover:border-blue-200 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-white rounded-lg border border-gray-200 text-blue-600">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900">Literature Review Draft</h4>
+                          <p className="text-xs text-gray-500 flex items-center gap-2">
+                            Last modified 2 days ago
+                            <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                            <span className="text-amber-600 font-semibold">Draft</span>
+                          </p>
+                        </div>
+                      </div>
+                      <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <Download className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* BOTTOM: Recent Activity Timeline */}
             <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
