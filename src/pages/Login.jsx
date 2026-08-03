@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, CheckCircle2, Sparkles, GraduationCap, Network, Bot, LayoutTemplate } from 'lucide-react';
 
 const GoogleIcon = () => (
@@ -13,6 +13,8 @@ const GoogleIcon = () => (
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const role = location.state?.role || 'Student';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,10 +57,20 @@ export default function Login() {
         setLoadingPhase('Loading AI Recommendation Engine...');
         
         setTimeout(() => {
-          // Mock checking if user is new (random choice for demo)
-          const isFirstTime = Math.random() > 0.5;
-          if (isFirstTime) {
-            navigate('/profile-setup');
+          if (role === 'Student') {
+            // Mock checking if user is new (random choice for demo)
+            const isFirstTime = Math.random() > 0.5;
+            if (isFirstTime) {
+              navigate('/profile-setup');
+            } else {
+              navigate('/dashboard');
+            }
+          } else if (role === 'Faculty Guide') {
+            navigate('/faculty-dashboard');
+          } else if (role === 'CC Faculty') {
+            navigate('/cc-faculty-dashboard');
+          } else if (role === 'Administrator') {
+            navigate('/admin-dashboard');
           } else {
             navigate('/dashboard');
           }

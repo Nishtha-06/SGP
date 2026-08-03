@@ -14,9 +14,8 @@ import {
 export default function RoleSelection() {
   const navigate = useNavigate();
 
-  const handleRoleSelect = () => {
-    // For now, redirect all roles to the login page.
-    navigate('/login');
+  const handleRoleSelect = (roleTitle) => {
+    navigate('/login', { state: { role: roleTitle } });
   };
 
   const roles = [

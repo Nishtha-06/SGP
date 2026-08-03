@@ -8,6 +8,9 @@ import Login from './pages/Login';
 import ProfileSetup from './pages/ProfileSetup';
 import Dashboard from './pages/Dashboard';
 import RoleSelection from './pages/RoleSelection';
+import FacultyDashboard from './pages/FacultyDashboard';
+import CCFacultyDashboard from './pages/CCFacultyDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (
@@ -21,6 +24,9 @@ export default function App() {
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/recommendation-results" element={<RecommendationResults />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
+        <Route path="/cc-faculty-dashboard" element={<CCFacultyDashboard />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
       </Routes>
       <Footer />
     </div>
