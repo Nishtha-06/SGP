@@ -11,6 +11,7 @@ import RoleSelection from './pages/RoleSelection';
 import FacultyDashboard from './pages/FacultyDashboard';
 import CCFacultyDashboard from './pages/CCFacultyDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ProjectDetails from './pages/ProjectDetails';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
         <Route path="/cc-faculty-dashboard" element={<CCFacultyDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/project-details" element={<ProjectDetails />} />
       </Routes>
       <Footer />
     </div>

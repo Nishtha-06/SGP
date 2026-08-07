@@ -6,12 +6,10 @@ import {
   Sparkles, 
   Layers, 
   Cpu, 
-  Search, 
   Database,
   ArrowRight,
   RefreshCw,
   SlidersHorizontal,
-  GraduationCap
 } from 'lucide-react';
 
 export default function Recommendations() {
@@ -21,6 +19,7 @@ export default function Recommendations() {
   const [languages, setLanguages] = useState([]);
   const [difficulty, setDifficulty] = useState('Medium');
   const [teamSize, setTeamSize] = useState(4);
+  const [preferredTech, setPreferredTech] = useState('MERN');
   const [category, setCategory] = useState('Major Project');
   const [checklistStep, setChecklistStep] = useState(0);
 
@@ -64,7 +63,27 @@ export default function Recommendations() {
   };
 
   const handleGenerate = () => {
-    navigate('/recommendation-results');
+    let previouslyApprovedProjects;
+    try {
+      previouslyApprovedProjects = JSON.parse(localStorage.getItem('approvedProjects') || '[]');
+    } catch {
+      previouslyApprovedProjects = [];
+    }
+
+    navigate('/recommendation-results', {
+      state: {
+        preferences: {
+          groupSize: Number(teamSize),
+          preferredTech: {
+            stack: preferredTech,
+            languages,
+          },
+          difficultyLevel: difficulty,
+          projectDomain: [...interests, category],
+          previouslyApprovedProjects,
+        },
+      },
+    });
   };
 
   return (
@@ -128,7 +147,7 @@ export default function Recommendations() {
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                    <div>
                      <label className="block text-sm font-bold text-gray-700 mb-2">1. Department</label>
-                     <select className="w-full bg-gray-50 border border-gray-200 text-gray-900 font-medium text-sm rounded-xl py-3 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_12px_center] bg-[length:16px]">
+                     <select value={preferredTech} onChange={(e) => setPreferredTech(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-900 font-medium text-sm rounded-xl py-3 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_12px_center] bg-[length:16px]">
                        <option>Computer Engineering</option>
                        <option>Information Technology</option>
                        <option>Artificial Intelligence & Data Science</option>

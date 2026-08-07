@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Brain, Menu, X, ArrowRight, Bell, Settings, LogOut, User } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
   const profileRef = useRef(null);
 
-  // Check if we are in a logged-in route
-  const isLoggedInRoute = ['/dashboard', '/recommendations', '/recommendation-results', '/projects'].includes(location.pathname);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,6 +21,16 @@ export default function Navbar() {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const syncAuthState = () => setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+    window.addEventListener('auth-change', syncAuthState);
+    window.addEventListener('storage', syncAuthState);
+    return () => {
+      window.removeEventListener('auth-change', syncAuthState);
+      window.removeEventListener('storage', syncAuthState);
+    };
   }, []);
 
   // Close profile dropdown when clicking outside
@@ -37,7 +45,10 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    window.dispatchEvent(new Event('auth-change'));
     setIsProfileOpen(false);
+    setIsOpen(false);
     navigate('/');
   };
 
@@ -49,7 +60,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Left Side: Logo */}
           <div 
-            onClick={() => navigate(isLoggedInRoute ? '/dashboard' : '/')}
+            onClick={() => navigate(isAuthenticated ? '/dashboard' : '/')}
             className="flex-shrink-0 flex items-center gap-2.5 cursor-pointer group"
           >
             <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3 shadow-md shadow-blue-500/20">
@@ -62,7 +73,7 @@ export default function Navbar() {
 
           {/* Center: Desktop Navigation NavLinks */}
           <div className="hidden md:flex space-x-9 items-center">
-            {isLoggedInRoute ? (
+            {isAuthenticated ? (
               <>
                 <NavLink 
                   to="/dashboard" 
@@ -109,7 +120,7 @@ export default function Navbar() {
 
           {/* Right Side */}
           <div className="hidden md:flex items-center gap-4">
-            {isLoggedInRoute ? (
+            {isAuthenticated ? (
               <>
                 {/* Notifications Button */}
                 <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors relative cursor-pointer">
@@ -169,7 +180,7 @@ export default function Navbar() {
 
           {/* Mobile hamburger menu button */}
           <div className="md:hidden flex items-center gap-3">
-            {isLoggedInRoute && (
+            {isAuthenticated && (
               <button className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors relative cursor-pointer">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
@@ -194,7 +205,7 @@ export default function Navbar() {
         }`}
       >
         <div className="px-4 space-y-2 pb-3">
-          {isLoggedInRoute ? (
+          {isAuthenticated ? (
             <>
               <div className="px-4 py-3 mb-2 flex items-center gap-3 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-200 text-blue-700 font-bold flex items-center justify-center">

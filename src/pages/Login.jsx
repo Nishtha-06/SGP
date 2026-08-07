@@ -57,6 +57,9 @@ export default function Login() {
         setLoadingPhase('Loading AI Recommendation Engine...');
         
         setTimeout(() => {
+          localStorage.setItem('isAuthenticated', 'true');
+          window.dispatchEvent(new Event('auth-change'));
+
           if (role === 'Student') {
             // Mock checking if user is new (random choice for demo)
             const isFirstTime = Math.random() > 0.5;
