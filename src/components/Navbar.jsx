@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Brain, Menu, X, ArrowRight, Bell, Settings, LogOut, User } from 'lucide-react';
+import { Brain, Menu, X, ArrowRight, Bell, Settings, LogOut, User, Lock } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -145,16 +145,25 @@ export default function Navbar() {
                         <p className="text-xs text-gray-500 truncate">student@college.edu</p>
                       </div>
                       
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors">
+                      <button 
+                        onClick={() => { setIsProfileOpen(false); navigate('/profile'); }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                      >
                         <User className="w-4 h-4" />
                         My Profile
                       </button>
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors">
+                      <button 
+                        onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                      >
                         <Settings className="w-4 h-4" />
                         Settings
                       </button>
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors">
-                        <User className="w-4 h-4" />
+                      <button 
+                        onClick={() => { setIsProfileOpen(false); navigate('/change-password'); }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                      >
+                        <Lock className="w-4 h-4" />
                         Change Password
                       </button>
                       
@@ -238,11 +247,23 @@ export default function Navbar() {
                 Projects
               </NavLink>
               <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
-                <button className="w-full text-left px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-3">
+                <button 
+                  onClick={() => { setIsOpen(false); navigate('/profile'); }}
+                  className="w-full text-left px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-3"
+                >
                   <User className="w-5 h-5" /> My Profile
                 </button>
-                <button className="w-full text-left px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-3">
+                <button 
+                  onClick={() => { setIsOpen(false); navigate('/settings'); }}
+                  className="w-full text-left px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-3"
+                >
                   <Settings className="w-5 h-5" /> Settings
+                </button>
+                <button 
+                  onClick={() => { setIsOpen(false); navigate('/change-password'); }}
+                  className="w-full text-left px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-3"
+                >
+                  <Lock className="w-5 h-5" /> Change Password
                 </button>
                 <button onClick={handleLogout} className="w-full text-left px-4 py-2.5 rounded-lg text-base font-medium text-red-600 hover:bg-red-50 flex items-center gap-3">
                   <LogOut className="w-5 h-5" /> Logout

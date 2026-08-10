@@ -12,6 +12,9 @@ import FacultyDashboard from './pages/FacultyDashboard';
 import CCFacultyDashboard from './pages/CCFacultyDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ProjectDetails from './pages/ProjectDetails';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import ChangePassword from './pages/ChangePassword';
 
 export default function App() {
   return (
@@ -29,6 +32,9 @@ export default function App() {
         <Route path="/cc-faculty-dashboard" element={<CCFacultyDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/project-details" element={<ProjectDetails />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/change-password" element={<ChangePassword />} />
       </Routes>
       <Footer />
     </div>
