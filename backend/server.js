@@ -7,6 +7,7 @@ import { OAuth2Client } from 'google-auth-library';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
@@ -42,6 +43,9 @@ async function facultyForDomain(domain, department) {
 }
 const projectPayload = (project) => ({ title: project.title, problemStatement: project.problemStatement, objective: project.objective, technologies: project.technologies || project.recommendedTechnologies || [], difficulty: project.difficulty || project.difficultyLevel || 'Medium', expectedOutcomes: project.expectedOutcomes || [], timeline: project.timeline || project.estimatedTimeline || '' });
 const isGroupLeader = (user, group) => group.leader.toString() === user.id;
+const createJoinCode = () => randomBytes(4).toString('hex').toUpperCase();
+const createGroupId = () => `GRP-${randomBytes(3).toString('hex').toUpperCase()}`;
+const userAcademicYear = (user) => String(user.academicYear || user.batch || '').trim();
 
 function authenticate(req, res, next) {
   const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null;
@@ -67,6 +71,18 @@ function parseRecommendedProjects(content) {
 async function seedDemoData() {
   if (await User.exists({})) {
     await User.updateMany({ role: 'FACULTY', domains: { $exists: false } }, { $set: { domains: ['AI / ML', 'Web', 'IoT'] } });
+    const legacyGroups = await Group.find({ $or: [{ joinCode: { $exists: false } }, { joinCode: '' }] }).select('_id');
+    for (const legacyGroup of legacyGroups) {
+      let joinCode = createJoinCode();
+      while (await Group.exists({ joinCode })) joinCode = createJoinCode();
+      await Group.updateOne({ _id: legacyGroup._id }, { $set: { joinCode, finalized: false, allowedAcademicYears: [] } });
+    }
+    const groupsWithoutShortId = await Group.find({ $or: [{ groupId: { $exists: false } }, { groupId: '' }] }).select('_id');
+    for (const legacyGroup of groupsWithoutShortId) {
+      let groupId = createGroupId();
+      while (await Group.exists({ groupId })) groupId = createGroupId();
+      await Group.updateOne({ _id: legacyGroup._id }, { $set: { groupId } });
+    }
     return;
   }
   const password = await bcrypt.hash('student123', 12);
@@ -78,7 +94,7 @@ async function seedDemoData() {
     { name: 'System Admin', email: 'admin@projectpulse.test', password: await bcrypt.hash('admin123', 12), role: 'ADMIN', department: 'Administration' },
   ]);
   await StudentProfile.create([{ user: student._id, skills: ['React', 'Python'], techInterests: ['AI', 'Web'], areasOfInterest: ['Smart Cities'] }, { user: student2._id, skills: ['Node.js'], techInterests: ['IoT'], areasOfInterest: ['Social Impact'] }]);
-  const group = await Group.create({ name: 'Pixel Pioneers', department: 'Computer Science', leader: student._id, members: [student._id, student2._id], preferredTech: ['React', 'Python'], domain: ['Smart Cities'], difficultyLevel: 'Medium', selectedProject: { title: 'Smart Campus Navigator' }, status: 'LOCKED' });
+  const group = await Group.create({ name: 'Pixel Pioneers', department: 'Computer Science', leader: student._id, members: [student._id, student2._id], groupId: createGroupId(), joinCode: createJoinCode(), allowedAcademicYears: [], preferredTech: ['React', 'Python'], domain: ['Smart Cities'], difficultyLevel: 'Medium', selectedProject: { title: 'Smart Campus Navigator' }, status: 'LOCKED', finalized: true });
   await Project.create({ group: group._id, department: group.department, domain: 'Web', ...projectPayload({ title: 'Smart Campus Navigator', problemStatement: 'Students need accessible, real-time campus navigation.', objective: 'Deliver accessible routes and live crowd insights.', recommendedTechnologies: ['React', 'Python', 'PostgreSQL'], difficultyLevel: 'Medium', expectedOutcomes: ['Accessible routes', 'Live occupancy insights'], estimatedTimeline: '12 weeks' }) });
   await SystemConfig.create({ key: 'aiRules', value: defaultAiRules });
   console.log(`Seeded demo accounts for ${faculty.email}, ${ccFaculty.email}, and ${admin.email}.`);
@@ -95,9 +111,9 @@ app.put('/api/faculty/profile', authenticate, allowRoles('FACULTY'), async (req,
 app.get('/api/student-profile', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const [user, profile] = await Promise.all([User.findById(req.user.id), StudentProfile.findOne({ user: req.user.id })]); if (!user) return res.status(404).json({ error: 'User not found.' }); return res.json({ user: publicUser(user), profile: profile || { skills: [], techInterests: [], areasOfInterest: [] } }); } catch (error) { next(error); } });
 app.put('/api/student-profile', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const profile = await StudentProfile.findOneAndUpdate({ user: req.user.id }, { user: req.user.id, university: req.body?.university || '', studentId: req.body?.studentId || '', semester: req.body?.semester || '', careerGoal: req.body?.careerGoal || '', skills: req.body?.skills || [], techInterests: req.body?.techInterests || [], areasOfInterest: req.body?.areasOfInterest || [] }, { upsert: true, new: true, runValidators: true }); res.json({ profile }); } catch (error) { next(error); } });
 
-app.post('/api/groups', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { if (await studentGroup(req.user.id)) return res.status(409).json({ error: 'You already belong to a group.' }); const { name, minSize = 1, maxSize = 4, preferredTech = [], domain = [], difficultyLevel = 'Medium' } = req.body || {}; if (!name?.trim()) return res.status(400).json({ error: 'Group name is required.' }); const group = await Group.create({ name, department: req.user.department, leader: req.user.id, members: [req.user.id], minSize, maxSize, preferredTech, domain, difficultyLevel }); res.status(201).json({ group }); } catch (error) { next(error); } });
-app.get('/api/groups/me', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const group = await Group.findOne({ members: req.user.id }).populate('members', 'name email role department').populate('leader', 'name email'); res.json({ group }); } catch (error) { next(error); } });
-app.post('/api/groups/:groupId/join', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const group = await Group.findById(req.params.groupId); if (!group) return res.status(404).json({ error: 'Group not found.' }); if (group.status === 'LOCKED' || group.status === 'SUBMITTED') return res.status(409).json({ error: 'This group is locked.' }); if (await studentGroup(req.user.id)) return res.status(409).json({ error: 'Leave your current group before joining another.' }); if (group.members.length >= group.maxSize) return res.status(409).json({ error: 'This group is already full.' }); group.members.push(req.user.id); await group.save(); res.json({ group }); } catch (error) { next(error); } });
+app.post('/api/groups', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { if (await studentGroup(req.user.id)) return res.status(409).json({ error: 'You already belong to a group.' }); const { name, maxSize = 4, allowedAcademicYears = [], preferredTech = [], domain = [], difficultyLevel = 'Medium' } = req.body || {}; if (!name?.trim()) return res.status(400).json({ error: 'Group name is required.' }); const group = await Group.create({ name: name.trim(), department: req.user.department, leader: req.user.id, members: [req.user.id], groupId: createGroupId(), joinCode: createJoinCode(), allowedAcademicYears: Array.isArray(allowedAcademicYears) ? allowedAcademicYears.map(String) : [], maxSize, preferredTech, domain, difficultyLevel }); const populated = await group.populate([{ path: 'members', select: 'name email role department academicYear batch' }, { path: 'leader', select: 'name email' }]); res.status(201).json({ group: populated }); } catch (error) { next(error); } });
+app.get('/api/groups/me', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const group = await Group.findOne({ members: req.user.id }).populate('members', 'name email role department academicYear batch').populate('leader', 'name email'); res.json({ group }); } catch (error) { next(error); } });
+app.post('/api/groups/join', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const lookup = String(req.body?.joinCode || req.body?.groupId || '').trim().toUpperCase(); if (!lookup) return res.status(400).json({ error: 'Enter a group ID or join code.' }); const group = await Group.findOne({ $or: [{ joinCode: lookup }, { groupId: lookup }] }); if (!group) return res.status(404).json({ error: 'Group not found. Check the ID or join code.' }); if (await studentGroup(req.user.id)) return res.status(409).json({ error: 'You already belong to another group.' }); if (group.finalized || group.status === 'LOCKED' || group.status === 'SUBMITTED') return res.status(409).json({ error: 'This group is finalized and cannot accept new members.' }); if (group.members.length >= group.maxSize) return res.status(409).json({ error: 'This group has reached its maximum size.' }); const academicYear = userAcademicYear(req.user); if (group.allowedAcademicYears.length && (!academicYear || !group.allowedAcademicYears.includes(academicYear))) return res.status(403).json({ error: 'Your academic year or batch is not allowed for this group.' }); group.members.push(req.user.id); await group.save(); const populated = await group.populate([{ path: 'members', select: 'name email role department academicYear batch' }, { path: 'leader', select: 'name email' }]); res.json({ group: populated }); } catch (error) { next(error); } });
 app.post('/api/groups/:groupId/select-project', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const group = await Group.findById(req.params.groupId); if (!group) return res.status(404).json({ error: 'Group not found.' }); if (!isGroupLeader(req.user, group)) return res.status(403).json({ error: 'Only the group leader can select a project.' }); if (group.status === 'LOCKED' || group.status === 'SUBMITTED') return res.status(409).json({ error: 'Project selection is locked.' }); if (!req.body?.project?.title) return res.status(400).json({ error: 'A project with a title is required.' }); group.selectedProject = req.body.project; group.status = 'PROJECT_SELECTED'; await group.save(); res.json({ group }); } catch (error) { next(error); } });
 app.post('/api/groups/:groupId/lock-selection', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const group = await Group.findById(req.params.groupId); if (!group) return res.status(404).json({ error: 'Group not found.' }); if (!isGroupLeader(req.user, group)) return res.status(403).json({ error: 'Only the group leader can lock selection.' }); if (!group.selectedProject?.title) return res.status(400).json({ error: 'Select a project before locking it.' }); group.status = 'LOCKED'; await group.save(); res.json({ group }); } catch (error) { next(error); } });
 

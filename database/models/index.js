@@ -9,6 +9,8 @@ const userSchema = new Schema({
   password: { type: String, required: true, select: false },
   role: { type: String, enum: roleValues, required: true },
   department: { type: String, required: true, trim: true },
+  academicYear: { type: String, trim: true, default: '' },
+  batch: { type: String, trim: true, default: '' },
   domains: [{ type: String, trim: true }],
   designation: { type: String, trim: true, default: '' },
   technologies: [{ type: String, trim: true }],
@@ -31,6 +33,9 @@ const groupSchema = new Schema({
   department: { type: String, required: true, trim: true },
   leader: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  groupId: { type: String, required: true, unique: true, index: true },
+  joinCode: { type: String, required: true, unique: true, index: true },
+  allowedAcademicYears: [{ type: String, trim: true }],
   minSize: { type: Number, default: 1, min: 1 },
   maxSize: { type: Number, default: 4, min: 1, max: 6 },
   preferredTech: [{ type: String, trim: true }],
@@ -38,6 +43,7 @@ const groupSchema = new Schema({
   difficultyLevel: { type: String, enum: ['Easy', 'Medium', 'Advanced'], default: 'Medium' },
   selectedProject: { type: Schema.Types.Mixed, default: null },
   status: { type: String, enum: ['FORMING', 'PROJECT_SELECTED', 'LOCKED', 'SUBMITTED'], default: 'FORMING' },
+  finalized: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const projectSchema = new Schema({

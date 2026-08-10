@@ -38,3 +38,11 @@ export async function uploadStudentDocuments(projectId, files, documentType) {
 export async function resubmitStudentProject(projectId, project) {
   return studentRequest(`/api/submissions/${projectId}/resubmit`, { method: 'PATCH', body: JSON.stringify({ project }) });
 }
+
+export async function createStudentGroup(group) {
+  return studentRequest('/api/groups', { method: 'POST', body: JSON.stringify(group) });
+}
+
+export async function joinStudentGroup(identifier) {
+  return studentRequest('/api/groups/join', { method: 'POST', body: JSON.stringify(identifier) });
+}
