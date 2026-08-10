@@ -9,10 +9,18 @@ const userSchema = new Schema({
   password: { type: String, required: true, select: false },
   role: { type: String, enum: roleValues, required: true },
   department: { type: String, required: true, trim: true },
+  domains: [{ type: String, trim: true }],
+  designation: { type: String, trim: true, default: '' },
+  technologies: [{ type: String, trim: true }],
+  maxProjectCapacity: { type: Number, default: 10, min: 1, max: 100 },
 }, { timestamps: true });
 
 const studentProfileSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  university: { type: String, trim: true, default: '' },
+  studentId: { type: String, trim: true, default: '' },
+  semester: { type: String, trim: true, default: '' },
+  careerGoal: { type: String, trim: true, default: '' },
   skills: [{ type: String, trim: true }],
   techInterests: [{ type: String, trim: true }],
   areasOfInterest: [{ type: String, trim: true }],
@@ -35,6 +43,7 @@ const groupSchema = new Schema({
 const projectSchema = new Schema({
   group: { type: Schema.Types.ObjectId, ref: 'Group', required: true, unique: true },
   department: { type: String, required: true, trim: true },
+  domain: { type: String, required: true, trim: true },
   title: { type: String, required: true, trim: true },
   problemStatement: { type: String, required: true },
   objective: { type: String, required: true },
@@ -44,6 +53,7 @@ const projectSchema = new Schema({
   timeline: { type: String, trim: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REVISION_REQUIRED'], default: 'PENDING' },
   approvedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  assignedFaculty: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   detailsLocked: { type: Boolean, default: false },
   submittedAt: { type: Date, default: Date.now },
 }, { timestamps: true });

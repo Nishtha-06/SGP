@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Recommendations from './pages/Recommendations';
 import RecommendationResults from './pages/RecommendationResults';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import ProfileSetup from './pages/ProfileSetup';
 import Dashboard from './pages/Dashboard';
 import RoleSelection from './pages/RoleSelection';
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/role-selection" element={<RoleSelection />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/recommendation-results" element={<RecommendationResults />} />

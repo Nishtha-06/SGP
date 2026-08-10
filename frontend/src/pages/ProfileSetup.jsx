@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserCircle2, GraduationCap, Target, ArrowRight } from 'lucide-react';
+import { getStudentProfile, saveStudentProfile } from '../services/authApi';
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
@@ -12,12 +13,37 @@ export default function ProfileSetup() {
   const [department, setDepartment] = useState('');
   const [semester, setSemester] = useState('');
   const [careerGoal, setCareerGoal] = useState('');
+  const [account, setAccount] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [error, setError] = useState('');
 
-  const handleSaveProfile = (e) => {
+  useEffect(() => {
+    let active = true;
+    getStudentProfile()
+      .then(({ user, profile }) => {
+        if (!active) return;
+        setAccount(user);
+        setFullName(user.name || '');
+        setDepartment(user.department || '');
+        setUniversity(profile.university || '');
+        setStudentId(profile.studentId || '');
+        setSemester(profile.semester || '');
+        setCareerGoal(profile.careerGoal || '');
+      })
+      .catch((requestError) => active && setError(requestError.message))
+      .finally(() => active && setLoadingProfile(false));
+    return () => { active = false; };
+  }, []);
+
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const profileData = { fullName, university, studentId, department, semester, careerGoal };
-    console.log('Profile saved:', profileData);
-    navigate('/recommendations');
+    setError('');
+    try {
+      await saveStudentProfile({ university, studentId, semester, careerGoal });
+      navigate('/recommendations');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   };
 
   return (
@@ -36,10 +62,10 @@ export default function ProfileSetup() {
             <UserCircle2 className="w-8 h-8" />
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
-            Complete Your Student Profile
+            Your Student Profile
           </h1>
           <p className="text-lg text-gray-500 font-medium">
-            Welcome aboard! Tell us about yourself so our AI can curate the perfect final year projects for you.
+            Your details are loaded from your signed-in ProjectHub account.
           </p>
         </div>
 
@@ -47,6 +73,9 @@ export default function ProfileSetup() {
         <div className="bg-white rounded-[24px] p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-150">
 
           <form onSubmit={handleSaveProfile} className="space-y-10">
+            {loadingProfile && <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">Loading your profile…</p>}
+            {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>}
+            {account && <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm"><p className="font-bold text-gray-900">{account.email}</p><p className="mt-1 text-gray-600">{account.role.replace('_', ' ')} · {account.department}</p></div>}
 
             {/* Section 1: Academic Information */}
             <div>
@@ -62,6 +91,7 @@ export default function ProfileSetup() {
                   <input
                     type="text"
                     required
+                    disabled
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium text-gray-700"
@@ -73,6 +103,7 @@ export default function ProfileSetup() {
                   <input
                     type="text"
                     required
+                    disabled={loadingProfile}
                     value={university}
                     onChange={(e) => setUniversity(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium text-gray-700"
@@ -88,6 +119,7 @@ export default function ProfileSetup() {
                   <input
                     type="text"
                     required
+                    disabled={loadingProfile}
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium text-gray-700"
@@ -98,11 +130,13 @@ export default function ProfileSetup() {
                   <label className="block text-sm font-bold text-gray-700 mb-2">Department</label>
                   <select
                     required
+                    disabled
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-medium text-gray-700"
                   >
                     <option value="" disabled>Select Department</option>
+                    <option value="Computer Science">Computer Science</option>
                     <option value="Computer Engineering">Computer Engineering</option>
                     <option value="Information Technology">Information Technology</option>
                     <option value="AI & DS">AI &amp; DS</option>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, CheckCircle2, Sparkles, GraduationCap, Network, Bot, LayoutTemplate } from 'lucide-react';
+import { loginUser } from '../services/authApi';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 48 48" className="mr-2">
@@ -42,44 +43,23 @@ export default function Login() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    
-    // Simulate login and profile check
+
     setLoading(true);
     setLoadingPhase('Authenticating...');
-    
-    setTimeout(() => {
-      setLoadingPhase('Checking your profile...');
-      
-      setTimeout(() => {
-        setLoadingPhase('Loading AI Recommendation Engine...');
-        
-        setTimeout(() => {
-          localStorage.setItem('isAuthenticated', 'true');
-          window.dispatchEvent(new Event('auth-change'));
-
-          if (role === 'Student') {
-            // Mock checking if user is new (random choice for demo)
-            const isFirstTime = Math.random() > 0.5;
-            if (isFirstTime) {
-              navigate('/profile-setup');
-            } else {
-              navigate('/dashboard');
-            }
-          } else if (role === 'Faculty Guide') {
-            navigate('/faculty-dashboard');
-          } else if (role === 'CC Faculty') {
-            navigate('/cc-faculty-dashboard');
-          } else if (role === 'Administrator') {
-            navigate('/admin-dashboard');
-          } else {
-            navigate('/dashboard');
-          }
-        }, 1500);
-      }, 1500);
-    }, 1500);
+    setErrors({});
+    const roleMap = { Student: 'STUDENT', 'Faculty Guide': 'FACULTY', 'CC Faculty': 'CC_FACULTY', Administrator: 'ADMIN' };
+    try {
+      const user = await loginUser({ email, password, role: roleMap[role] });
+      setLoadingPhase('Loading your workspace...');
+      const destinations = { STUDENT: '/dashboard', FACULTY: '/faculty-dashboard', CC_FACULTY: '/cc-faculty-dashboard', ADMIN: '/admin-dashboard' };
+      navigate(destinations[user.role] || '/dashboard');
+    } catch (error) {
+      setErrors({ form: error.message });
+      setLoading(false);
+    }
   };
 
   const features = [
@@ -182,6 +162,7 @@ export default function Login() {
                   </div>
 
                   <form onSubmit={handleLogin} className="space-y-5">
+                    {errors.form && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{errors.form}</p>}
                     {/* Email Input */}
                     <div>
                       <div className="relative">
@@ -279,9 +260,13 @@ export default function Login() {
                   {/* Register Link */}
                   <div className="mt-8 text-center text-sm font-semibold text-gray-600">
                     Don't have an account?{' '}
-                    <a href="#" className="font-bold text-blue-600 hover:text-blue-700 hover:underline">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/register', { state: { role } })}
+                      className="font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                    >
                       Create Account
-                    </a>
+                    </button>
                   </div>
                 </>
               )}

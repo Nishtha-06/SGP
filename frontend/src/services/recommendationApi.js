@@ -19,3 +19,14 @@ export async function generateRecommendations(preferences, signal) {
 
   return payload.projects;
 }
+
+export async function submitProjectProposal(project) {
+  const response = await fetch('/api/submissions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('authToken') || ''}` },
+    body: JSON.stringify({ project }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'Unable to submit this project proposal.');
+  return payload.submission;
+}

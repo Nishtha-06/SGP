@@ -1,11 +1,27 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, CheckCircle2, CircleDot, Clock3, Layers3, Sparkles, Target, Users } from 'lucide-react';
+import { submitProjectProposal } from '../services/recommendationApi';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const project = state?.project;
   const groupSize = state?.groupSize;
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await submitProjectProposal(project);
+      navigate('/dashboard');
+    } catch (requestError) {
+      setError(requestError.message);
+      setSubmitting(false);
+    }
+  };
 
   if (!project) {
     return (
@@ -67,7 +83,8 @@ export default function ProjectDetails() {
             <DetailCard icon={CalendarDays} title="Project snapshot" iconClass="text-amber-600 bg-amber-50">
               <dl className="space-y-4 text-sm"><div className="flex items-center justify-between gap-4"><dt className="text-slate-500">Difficulty</dt><dd className="font-bold text-slate-800">{project.difficultyLevel || 'Medium'}</dd></div><div className="flex items-center justify-between gap-4"><dt className="text-slate-500">Estimated timeline</dt><dd className="font-bold text-slate-800">{project.estimatedTimeline || 'TBD'}</dd></div><div className="flex items-center justify-between gap-4"><dt className="text-slate-500">Technologies</dt><dd className="font-bold text-slate-800">{technologies.length}</dd></div></dl>
             </DetailCard>
-            <button onClick={() => navigate('/dashboard', { state: { selectedProject: project } })} className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">Select this project</button>
+            {error && <p className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>}
+            <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? 'Submitting proposal...' : 'Select and submit proposal'}</button>
           </aside>
         </div>
       </div>

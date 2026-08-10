@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Brain, Menu, X, ArrowRight, Bell, Settings, LogOut, User, Lock } from 'lucide-react';
+import { clearSession, getStoredUser } from '../services/authApi';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,9 @@ export default function Navbar() {
   const profileRef = useRef(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
+  const [currentUser, setCurrentUser] = useState(getStoredUser);
+  const initials = (currentUser?.name || 'User').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
+  const dashboardPath = currentUser?.role === 'FACULTY' ? '/faculty-dashboard' : currentUser?.role === 'CC_FACULTY' ? '/cc-faculty-dashboard' : currentUser?.role === 'ADMIN' ? '/admin-dashboard' : '/dashboard';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,7 +28,10 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const syncAuthState = () => setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+    const syncAuthState = () => {
+      setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+      setCurrentUser(getStoredUser());
+    };
     window.addEventListener('auth-change', syncAuthState);
     window.addEventListener('storage', syncAuthState);
     return () => {
@@ -45,8 +52,7 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    window.dispatchEvent(new Event('auth-change'));
+    clearSession();
     setIsProfileOpen(false);
     setIsOpen(false);
     navigate('/');
@@ -60,7 +66,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Left Side: Logo */}
           <div 
-            onClick={() => navigate(isAuthenticated ? '/dashboard' : '/')}
+            onClick={() => navigate(isAuthenticated ? dashboardPath : '/')}
             className="flex-shrink-0 flex items-center gap-2.5 cursor-pointer group"
           >
             <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3 shadow-md shadow-blue-500/20">
@@ -81,18 +87,12 @@ export default function Navbar() {
                 >
                   Dashboard
                 </NavLink>
-                <NavLink 
+                {currentUser?.role === 'STUDENT' && <NavLink 
                   to="/recommendations" 
                   className={({ isActive }) => `text-sm font-medium transition-colors duration-200 relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-600 after:transition-transform after:duration-300 ${isActive ? 'text-blue-600 after:scale-x-100' : 'text-gray-500 hover:text-blue-600 after:scale-x-0 hover:after:scale-x-100'}`}
                 >
                   Recommendations
-                </NavLink>
-                <NavLink 
-                  to="/projects" 
-                  className={({ isActive }) => `text-sm font-medium transition-colors duration-200 relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-600 after:transition-transform after:duration-300 ${isActive ? 'text-blue-600 after:scale-x-100' : 'text-gray-500 hover:text-blue-600 after:scale-x-0 hover:after:scale-x-100'}`}
-                >
-                  Projects
-                </NavLink>
+                </NavLink>}
               </>
             ) : (
               <>
@@ -134,15 +134,15 @@ export default function Navbar() {
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                     className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-200 text-blue-700 font-bold hover:ring-2 hover:ring-blue-400 hover:ring-offset-2 transition-all cursor-pointer focus:outline-none"
                   >
-                    SN
+                    {initials}
                   </button>
 
                   {/* Dropdown Menu */}
                   {isProfileOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fade-in-up origin-top-right">
                       <div className="px-4 py-3 border-b border-gray-50 mb-2">
-                        <p className="text-sm font-bold text-gray-900">Student Name</p>
-                        <p className="text-xs text-gray-500 truncate">student@college.edu</p>
+                        <p className="text-sm font-bold text-gray-900">{currentUser?.name || 'Your profile'}</p>
+                        <p className="text-xs text-gray-500 truncate">{currentUser?.email || ''}</p>
                       </div>
                       
                       <button 
@@ -218,34 +218,27 @@ export default function Navbar() {
             <>
               <div className="px-4 py-3 mb-2 flex items-center gap-3 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-200 text-blue-700 font-bold flex items-center justify-center">
-                  SN
+                  {initials}
                 </div>
                 <div>
-                   <p className="text-sm font-bold text-gray-900">Student Name</p>
-                   <p className="text-xs text-gray-500">student@college.edu</p>
+                   <p className="text-sm font-bold text-gray-900">{currentUser?.name || 'Your profile'}</p>
+                   <p className="text-xs text-gray-500">{currentUser?.email || ''}</p>
                 </div>
               </div>
               <NavLink
-                to="/dashboard"
+                to={dashboardPath}
                 onClick={() => setIsOpen(false)}
                 className="block px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
               >
                 Dashboard
               </NavLink>
-              <NavLink
+              {currentUser?.role === 'STUDENT' && <NavLink
                 to="/recommendations"
                 onClick={() => setIsOpen(false)}
                 className="block px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
               >
                 Recommendations
-              </NavLink>
-              <NavLink
-                to="/projects"
-                onClick={() => setIsOpen(false)}
-                className="block px-4 py-2.5 rounded-lg text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
-              >
-                Projects
-              </NavLink>
+              </NavLink>}
               <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
                 <button 
                   onClick={() => { setIsOpen(false); navigate('/profile'); }}
