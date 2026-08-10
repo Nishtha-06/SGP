@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import cors from 'cors';
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { mkdirSync } from 'node:fs';
@@ -17,6 +18,11 @@ const jwtSecret = process.env.JWT_SECRET || 'development-only-change-me';
 const mongoUri = process.env.MONGODB_URI;
 const groqModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 const hasGroqApiKey = Boolean(process.env.GROQ_API_KEY && !process.env.GROQ_API_KEY.includes('your_groq_api_key'));
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI || `http://localhost:${port}/api/auth/google/callback`;
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const googleClient = googleClientId && googleClientSecret ? new OAuth2Client(googleClientId, googleClientSecret, googleRedirectUri) : null;
 const defaultAiRules = { prioritizeInterdisciplinaryTeams: true, includeSocialImpactScore: true, allowExternalProblemStatements: false, maxRecommendations: 3 };
 
 app.use(cors());
@@ -27,6 +33,7 @@ const upload = multer({ storage: multer.diskStorage({ destination: (_req, _file,
 app.use('/uploads', express.static(uploadsDir));
 
 const publicUser = (user) => ({ id: user._id?.toString() || user.id, name: user.name, email: user.email, role: user.role, department: user.department, domains: user.domains || [], designation: user.designation || '', technologies: user.technologies || [], maxProjectCapacity: user.maxProjectCapacity || 10 });
+const createAuthToken = (user) => jwt.sign({ id: user._id.toString(), role: user.role, department: user.department, name: user.name }, jwtSecret, { expiresIn: '8h' });
 const normalizeDomain = (domain) => String(domain || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 async function facultyForDomain(domain, department) {
   const normalizedDomain = normalizeDomain(domain);
@@ -78,6 +85,8 @@ async function seedDemoData() {
 }
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', provider: 'groq' }));
+app.get('/api/auth/google', (req, res) => { if (!googleClient) return res.redirect(`${frontendUrl}/login?oauthError=${encodeURIComponent('Google sign-in is not configured on the server.')}`); const role = ['STUDENT', 'FACULTY', 'CC_FACULTY', 'ADMIN'].includes(req.query.role) ? req.query.role : 'STUDENT'; const state = jwt.sign({ role }, jwtSecret, { expiresIn: '10m' }); const authorizationUrl = googleClient.generateAuthUrl({ access_type: 'offline', scope: ['openid', 'email', 'profile'], prompt: 'select_account', state }); return res.redirect(authorizationUrl); });
+app.get('/api/auth/google/callback', async (req, res) => { try { if (!googleClient) return res.redirect(`${frontendUrl}/login?oauthError=${encodeURIComponent('Google sign-in is not configured on the server.')}`); const { tokens } = await googleClient.getToken(String(req.query.code || '')); const ticket = await googleClient.verifyIdToken({ idToken: tokens.id_token, audience: googleClientId }); const payload = ticket.getPayload(); if (!payload?.email || !payload.email_verified) throw new Error('Google did not return a verified email address.'); let state; try { state = jwt.verify(String(req.query.state || ''), jwtSecret); } catch { throw new Error('The Google sign-in session expired. Try again.'); } const role = ['STUDENT', 'FACULTY', 'CC_FACULTY', 'ADMIN'].includes(state.role) ? state.role : 'STUDENT'; let user = await User.findOne({ email: payload.email.toLowerCase() }); if (user && user.role !== role) return res.redirect(`${frontendUrl}/login?oauthError=${encodeURIComponent(`This Google account belongs to the ${user.role} role.`)}`); if (!user) { user = await User.create({ name: payload.name || payload.email.split('@')[0], email: payload.email.toLowerCase(), password: await bcrypt.hash(jwt.sign({ email: payload.email }, jwtSecret), 12), role, department: 'Computer Science' }); if (role === 'STUDENT') await StudentProfile.create({ user: user._id }); } const token = createAuthToken(user); const userData = encodeURIComponent(JSON.stringify(publicUser(user))); return res.redirect(`${frontendUrl}/login?oauthToken=${encodeURIComponent(token)}&oauthUser=${userData}`); } catch (error) { return res.redirect(`${frontendUrl}/login?oauthError=${encodeURIComponent(error.message || 'Google sign-in failed.')}`); } });
 app.post('/api/auth/register', async (req, res, next) => { try { const { name, email, password, department, role = 'STUDENT', domains = [] } = req.body || {}; const allowedRoles = ['STUDENT', 'FACULTY', 'CC_FACULTY', 'ADMIN']; if (!name?.trim() || !email?.trim() || !password || !department?.trim()) return res.status(400).json({ error: 'Name, email, password, and department are required.' }); if (password.length < 8) return res.status(400).json({ error: 'Password must contain at least 8 characters.' }); if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Please select a valid account role.' }); if (role === 'FACULTY' && (!Array.isArray(domains) || !domains.length)) return res.status(400).json({ error: 'Faculty accounts must have at least one assigned domain.' }); if (await User.exists({ email: email.toLowerCase().trim() })) return res.status(409).json({ error: 'An account with this email already exists.' }); const user = await User.create({ name: name.trim(), email: email.trim().toLowerCase(), password: await bcrypt.hash(password, 12), role, department: department.trim(), domains: role === 'FACULTY' ? domains.map((domain) => String(domain).trim()).filter(Boolean) : [] }); if (role === 'STUDENT') await StudentProfile.create({ user: user._id }); const token = jwt.sign({ id: user._id.toString(), role: user.role, department: user.department, name: user.name }, jwtSecret, { expiresIn: '8h' }); return res.status(201).json({ token, user: publicUser(user) }); } catch (error) { next(error); } });
 app.post('/api/auth/login', async (req, res, next) => { try { const { email, password, role } = req.body || {}; const user = await User.findOne({ email: String(email || '').toLowerCase() }).select('+password'); if (!user || !(await bcrypt.compare(password || '', user.password))) return res.status(401).json({ error: 'Invalid email or password.' }); if (role && role !== user.role) return res.status(403).json({ error: `This account has the ${user.role} role, not ${role}.` }); const token = jwt.sign({ id: user._id.toString(), role: user.role, department: user.department, name: user.name }, jwtSecret, { expiresIn: '8h' }); return res.json({ token, user: publicUser(user) }); } catch (error) { next(error); } });
 app.get('/api/auth/me', authenticate, async (req, res, next) => { try { const user = await User.findById(req.user.id); if (!user) return res.status(404).json({ error: 'User not found.' }); return res.json({ user: publicUser(user) }); } catch (error) { next(error); } });

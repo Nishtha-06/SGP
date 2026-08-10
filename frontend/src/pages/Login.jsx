@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, CheckCircle2, Sparkles, GraduationCap, Network, Bot, LayoutTemplate } from 'lucide-react';
-import { loginUser } from '../services/authApi';
+import { loginUser, saveSession } from '../services/authApi';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 48 48" className="mr-2">
@@ -24,6 +24,30 @@ export default function Login() {
   
   // Validation states
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oauthError = params.get('oauthError');
+    const oauthToken = params.get('oauthToken');
+    const oauthUser = params.get('oauthUser');
+    const errorTimer = oauthError ? window.setTimeout(() => setErrors({ form: oauthError }), 0) : null;
+    if (oauthToken && oauthUser) {
+      try {
+        const parsedUser = JSON.parse(oauthUser);
+        saveSession({ token: oauthToken, user: parsedUser });
+        const destinations = { STUDENT: '/dashboard', FACULTY: '/faculty-dashboard', CC_FACULTY: '/cc-faculty-dashboard', ADMIN: '/admin-dashboard' };
+        navigate(destinations[parsedUser.role] || '/dashboard', { replace: true });
+      } catch {
+        window.setTimeout(() => setErrors({ form: 'Google sign-in returned an invalid session.' }), 0);
+      }
+    }
+    return () => { if (errorTimer) window.clearTimeout(errorTimer); };
+  }, [location.search, navigate]);
+
+  const handleGoogleLogin = () => {
+    const roleMap = { Student: 'STUDENT', 'Faculty Guide': 'FACULTY', 'CC Faculty': 'CC_FACULTY', Administrator: 'ADMIN' };
+    window.location.href = `/api/auth/google?role=${encodeURIComponent(roleMap[role] || 'STUDENT')}`;
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -250,6 +274,7 @@ export default function Login() {
                   <div>
                     <button
                       type="button"
+                      onClick={handleGoogleLogin}
                       className="w-full flex items-center justify-center py-3.5 px-4 border border-gray-200 rounded-xl shadow-sm bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 cursor-pointer"
                     >
                       <GoogleIcon />
