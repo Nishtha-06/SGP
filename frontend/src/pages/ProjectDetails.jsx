@@ -1,24 +1,65 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, CheckCircle2, CircleDot, Clock3, Layers3, Sparkles, Target, Users } from 'lucide-react';
-import { submitProjectProposal } from '../services/recommendationApi';
+import { submitProjectProposal, uploadProjectProposal } from '../services/recommendationApi';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const project = state?.project;
   const groupSize = state?.groupSize;
+  const fileInputRef = useRef(null);
+  const [selectedProposal, setSelectedProposal] = useState(null);
+  const [submissionId, setSubmissionId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setSelectedProposal(null);
+      setSuccess('');
+      setError('Please select a PDF file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setSelectedProposal(null);
+      setSuccess('');
+      setError('PDF size must be less than 10 MB.');
+      return;
+    }
+
+    setSelectedProposal(file);
+    setError('');
+    setSuccess('');
+  };
 
   const handleSubmit = async () => {
+    if (!selectedProposal) {
+      fileInputRef.current?.click();
+      return;
+    }
+
     setSubmitting(true);
     setError('');
+    setSuccess('');
     try {
-      await submitProjectProposal(project);
-      navigate('/dashboard');
+      let projectId = submissionId;
+      if (!projectId) {
+        const submission = await submitProjectProposal(project);
+        projectId = submission._id;
+        setSubmissionId(projectId);
+      }
+      await uploadProjectProposal(projectId, selectedProposal);
+      setSuccess('Proposal submitted successfully.');
+      setSelectedProposal(null);
     } catch (requestError) {
       setError(requestError.message);
+    } finally {
       setSubmitting(false);
     }
   };
@@ -83,8 +124,11 @@ export default function ProjectDetails() {
             <DetailCard icon={CalendarDays} title="Project snapshot" iconClass="text-amber-600 bg-amber-50">
               <dl className="space-y-4 text-sm"><div className="flex items-center justify-between gap-4"><dt className="text-slate-500">Difficulty</dt><dd className="font-bold text-slate-800">{project.difficultyLevel || 'Medium'}</dd></div><div className="flex items-center justify-between gap-4"><dt className="text-slate-500">Estimated timeline</dt><dd className="font-bold text-slate-800">{project.estimatedTimeline || 'TBD'}</dd></div><div className="flex items-center justify-between gap-4"><dt className="text-slate-500">Technologies</dt><dd className="font-bold text-slate-800">{technologies.length}</dd></div></dl>
             </DetailCard>
+            <input ref={fileInputRef} type="file" accept="application/pdf,.pdf" onChange={handleFileChange} className="hidden" />
+            {selectedProposal && <p className="mb-3 text-sm font-semibold text-slate-600">Selected proposal: {selectedProposal.name}</p>}
             {error && <p className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>}
-            <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? 'Submitting proposal...' : 'Select and submit proposal'}</button>
+            {success && <p className="mb-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{success}</p>}
+            <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? 'Submitting...' : selectedProposal ? 'Submit proposal' : 'Select and submit proposal'}</button>
           </aside>
         </div>
       </div>
