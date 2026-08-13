@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
 import FeatureCard from '../components/FeatureCard';
-import { Brain, Workflow, UserCheck, Sparkles, Search, BookOpen, Clock, Tag, ArrowRight } from 'lucide-react';
+import { Brain, Workflow, UserCheck, Sparkles, Search, BookOpen, Clock, Tag, ArrowRight, FileText, Activity, CheckCircle, Copy, BarChart } from 'lucide-react';
 
 export default function Home() {
   const [selectedDomain, setSelectedDomain] = useState('All');
@@ -65,7 +66,7 @@ export default function Home() {
     }
   ];
 
-  const domains = ['All', 'AI & ML', 'Software Engineering', 'Cybersecurity', 'IoT & Embedded', 'Blockchain'];
+  const domains = ['All', 'AI & ML', 'Web Development', 'Software Engineering', 'Cybersecurity', 'IoT & Embedded', 'Blockchain', 'Data Science', 'Mobile Development', 'Cloud Computing'];
 
   // Filtering recommendation logic
   const filteredProjects = databaseProjects.filter(project => {
@@ -86,40 +87,79 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <span className="text-blue-600 text-sm font-semibold tracking-wider uppercase bg-blue-50 px-3 py-1.5 rounded-full">
-              Core Capabilities
+              Features
             </span>
             <h2 className="mt-4 text-3xl md:text-4xl font-extrabold text-gray-900">
-              Designed to Streamline Your Project Journey
+              Everything You Need to Manage Your Project
             </h2>
             <p className="mt-4 text-lg text-gray-500 font-normal">
               Everything university students and faculty coordinators need to collaborate from ideation to final submission.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Card 1: AI Matching */}
-            <FeatureCard 
-              title="AI Matching" 
-              description="Matching AI technology with student skills to recommend suitable projects."
-            >
-              <Brain className="w-6 h-6" />
-            </FeatureCard>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <FeatureCard title="AI Project Recommendations" description="Get personalized, AI-curated project ideas tailored to your skills."><Brain className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Smart Project Matching" description="Connect with the perfect project based on your domain and preferences."><Sparkles className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Project Workflow Tracking" description="Track your project's development workflow from start to finish."><Workflow className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Faculty Review & Feedback" description="Seamlessly submit proposals and receive faculty guidance and feedback."><UserCheck className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Document Management" description="Securely upload, organize, and share all project-related documents."><FileText className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Progress & Milestone Tracking" description="Set milestones and track development progress effectively."><Activity className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Project Approval Workflow" description="Streamlined approval processes for proposals and evaluations."><CheckCircle className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Project Similarity Detection" description="Prevent duplicate projects with intelligent similarity detection."><Copy className="w-6 h-6" /></FeatureCard>
+            <FeatureCard title="Analytics & Reporting" description="Get actionable insights into project statuses and outcomes."><BarChart className="w-6 h-6" /></FeatureCard>
+          </div>
+        </div>
+      </section>
 
-            {/* Card 2: Workflow Tracking */}
-            <FeatureCard 
-              title="Workflow Tracking" 
-              description="Track project progress, milestones, and development workflow."
-            >
-              <Workflow className="w-6 h-6" />
-            </FeatureCard>
-
-            {/* Card 3: Faculty Review */}
-            <FeatureCard 
-              title="Faculty Review" 
-              description="Faculty members review proposals and guide project development."
-            >
-              <UserCheck className="w-6 h-6" />
-            </FeatureCard>
+      {/* 4. About Section */}
+      <section id="about" className="py-20 bg-white border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="order-2 lg:order-1">
+              <span className="text-blue-600 text-sm font-semibold tracking-wider uppercase bg-blue-50 px-3 py-1.5 rounded-full mb-4 inline-block">
+                About AI ProjectHub
+              </span>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
+                Bridging the Gap Between Ideas and Execution
+              </h2>
+              <p className="text-lg text-gray-500 mb-6 leading-relaxed">
+                AI ProjectHub is a centralized platform designed to help students discover suitable project ideas based on their interests, skills, technologies, domain, difficulty level, and group requirements.
+              </p>
+              <p className="text-lg text-gray-500 mb-6 leading-relaxed">
+                The platform also helps faculty review projects, provide feedback, monitor progress, manage documentation, and evaluate project work.
+              </p>
+              <p className="text-lg font-bold text-gray-700 mb-8 leading-relaxed bg-blue-50/50 p-4 rounded-xl border border-blue-100 shadow-sm inline-block">
+                Idea &rarr; Recommendation &rarr; Proposal &rarr; Approval &rarr; Development &rarr; Review &rarr; Evaluation
+              </p>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Brain className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-gray-900 font-bold text-lg">AI Driven</h4>
+                    <p className="text-sm text-gray-500 font-medium">Smart matching</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-gray-900 font-bold text-lg">Academic</h4>
+                    <p className="text-sm text-gray-500 font-medium">Focused success</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2 relative">
+              <div className="absolute inset-0 bg-blue-100/50 rounded-3xl transform translate-x-4 translate-y-4 -z-10"></div>
+              <img 
+                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                alt="Students collaborating" 
+                className="relative rounded-3xl shadow-xl border border-gray-100 object-cover aspect-[4/3] w-full"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -133,10 +173,10 @@ export default function Home() {
               <span>Interactive Hub</span>
             </div>
             <h2 className="mt-4 text-3xl md:text-4xl font-extrabold text-gray-900">
-              Find Your Masterpiece Project
+              Explore Project Ideas
             </h2>
             <p className="mt-4 text-lg text-gray-500 font-normal">
-              Filter by domains or perform searches keying in your skills to view AI curated proposals instantly.
+              Discover project ideas across different domains, technologies, and difficulty levels.
             </p>
           </div>
 
@@ -212,18 +252,13 @@ export default function Home() {
                     </div>
 
                     {/* CTA Action Bar */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="pt-4 border-t border-gray-100">
                       <span className={`text-[12px] font-bold ${
                         project.difficulty === 'Advanced' ? 'text-red-500 bg-red-50' : 
                         project.difficulty === 'Medium' ? 'text-yellow-600 bg-yellow-50' : 'text-green-600 bg-green-50'
-                      } px-2.5 py-1 rounded-md`}>
+                      } px-2.5 py-1 rounded-md inline-block`}>
                         {project.difficulty}
                       </span>
-                      
-                      <button className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group cursor-pointer">
-                        <span>Submit Proposal</span>
-                        <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -236,6 +271,37 @@ export default function Home() {
               <p className="text-sm text-gray-500 mt-1">Try tweaking filters or searching for alternative key skills.</p>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* 5. CTA Section */}
+      <section className="py-20 bg-blue-600 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-black/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+        
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white mb-6">
+            Ready to Find Your Next Project?
+          </h2>
+          <p className="text-lg md:text-xl text-blue-100 font-medium max-w-2xl mx-auto mb-10 leading-relaxed">
+            Explore ideas, discover possibilities, and turn your project concept into reality.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+            <Link
+              to="/role-selection"
+              className="inline-flex justify-center items-center px-8 py-4 border border-transparent text-base font-bold rounded-xl text-blue-600 bg-white hover:bg-gray-50 shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200 w-full sm:w-auto"
+            >
+              Explore Projects
+            </Link>
+            <Link
+              to="/login"
+              state={{ role: 'Student' }}
+              className="inline-flex justify-center items-center px-8 py-4 border-2 border-blue-400 text-base font-bold rounded-xl text-white hover:bg-blue-500 hover:border-blue-300 active:scale-95 transition-all duration-200 w-full sm:w-auto"
+            >
+              Get Recommendations
+            </Link>
+          </div>
         </div>
       </section>
     </main>

@@ -1,8 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export default function Hero() {
   return (
-    <section id="about" className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden bg-white">
+    <section id="hero" className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden bg-white">
       {/* Background decorations */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-60 pointer-events-none z-0"></div>
@@ -15,28 +16,29 @@ export default function Hero() {
           {/* Left Column: Heading and description */}
           <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 md:space-y-8">
             <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-gray-900 leading-[1.12] tracking-tight">
-              Elevate Your Final Year <br />
-              <span className="text-gray-900">Project with AI.</span>
+              Turn Your Project Ideas <br />
+              <span className="text-gray-900">Into Reality with AI.</span>
             </h1>
             
             <p className="text-lg md:text-xl text-gray-500 font-normal max-w-lg leading-relaxed">
-              Smart recommendations, seamless management, better outcomes.
+              Discover meaningful project ideas, get AI-powered recommendations, and manage your project journey from idea to completion.
             </p>
             
             {/* Buttons UI */}
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-              <a
-                href="#recommendations"
+              <Link
+                to="/login"
+                state={{ role: 'Student' }}
                 className="inline-flex justify-center items-center px-6 py-3.5 border border-transparent text-base font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/10 hover:shadow-lg hover:shadow-blue-500/20 active:scale-98 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
               >
-                Get Recommendations
-              </a>
-              <a
-                href="#features"
+                Get Project Recommendations
+              </Link>
+              <Link
+                to="/role-selection"
                 className="inline-flex justify-center items-center px-6 py-3.5 border border-gray-200 text-base font-semibold rounded-lg text-gray-800 bg-white hover:bg-gray-50 hover:border-gray-300 active:scale-98 transition-all duration-200 cursor-pointer"
               >
                 Explore Projects
-              </a>
+              </Link>
             </div>
           </div>
           

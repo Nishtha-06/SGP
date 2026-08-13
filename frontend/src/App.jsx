@@ -16,6 +16,7 @@ import ProjectDetails from './pages/ProjectDetails';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import ChangePassword from './pages/ChangePassword';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
   return (
@@ -26,17 +27,17 @@ export default function App() {
         <Route path="/role-selection" element={<RoleSelection />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/profile-setup" element={<ProfileSetup />} />
-        <Route path="/recommendations" element={<Recommendations />} />
-        <Route path="/recommendation-results" element={<RecommendationResults />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
-        <Route path="/cc-faculty-dashboard" element={<CCFacultyDashboard />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        <Route path="/project-details" element={<ProjectDetails />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/profile-setup" element={<ProtectedRoute><ProfileSetup /></ProtectedRoute>} />
+        <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
+        <Route path="/recommendation-results" element={<ProtectedRoute><RecommendationResults /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['STUDENT']}><Dashboard /></ProtectedRoute>} />
+        <Route path="/faculty-dashboard" element={<ProtectedRoute allowedRoles={['FACULTY']}><FacultyDashboard /></ProtectedRoute>} />
+        <Route path="/cc-faculty-dashboard" element={<ProtectedRoute allowedRoles={['CC_FACULTY']}><CCFacultyDashboard /></ProtectedRoute>} />
+        <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/project-details" element={<ProtectedRoute><ProjectDetails /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
       </Routes>
       <Footer />
     </div>

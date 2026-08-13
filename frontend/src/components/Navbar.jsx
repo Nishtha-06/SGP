@@ -82,7 +82,7 @@ export default function Navbar() {
             {isAuthenticated ? (
               <>
                 <NavLink 
-                  to="/dashboard" 
+                  to={dashboardPath} 
                   className={({ isActive }) => `text-sm font-medium transition-colors duration-200 relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-600 after:transition-transform after:duration-300 ${isActive ? 'text-blue-600 after:scale-x-100' : 'text-gray-500 hover:text-blue-600 after:scale-x-0 hover:after:scale-x-100'}`}
                 >
                   Dashboard
