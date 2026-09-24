@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import cors from 'cors';
 import express from 'express';
@@ -13,11 +13,18 @@ import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { ApprovedProjectArchive, Document, Group, Project, Review, StudentProfile, SystemConfig, User } from '../database/models/index.js';
 
+const backendDir = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(backendDir, '..', '.env') });
+
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const jwtSecret = process.env.JWT_SECRET || 'development-only-change-me';
 const mongoUri = process.env.MONGODB_URI;
 const groqModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const groqFallbackModels = (process.env.GROQ_FALLBACK_MODELS || 'llama-3.1-8b-instant,llama-3.3-70b-specdec,qwen/qwen3-32b')
+  .split(',')
+  .map((model) => model.trim())
+  .filter(Boolean);
 const hasGroqApiKey = Boolean(process.env.GROQ_API_KEY && !process.env.GROQ_API_KEY.includes('your_groq_api_key'));
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -46,6 +53,71 @@ const isGroupLeader = (user, group) => group.leader.toString() === user.id;
 const createJoinCode = () => randomBytes(4).toString('hex').toUpperCase();
 const createGroupId = () => `GRP-${randomBytes(3).toString('hex').toUpperCase()}`;
 const userAcademicYear = (user) => String(user.academicYear || user.batch || '').trim();
+let cachedGroqModels = null;
+
+async function getAvailableGroqModels() {
+  if (cachedGroqModels) return cachedGroqModels;
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY.trim()}` },
+    });
+    if (!response.ok) return [];
+    const payload = await response.json();
+    const models = Array.isArray(payload?.data) ? payload.data.map((item) => item?.id).filter(Boolean) : [];
+    cachedGroqModels = models;
+    return models;
+  } catch {
+    return [];
+  }
+}
+
+async function requestGroqCompletion(messages) {
+  const triedModels = [];
+  const availableModels = await getAvailableGroqModels();
+  const preferredKnownModels = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama-3.3-70b-specdec', 'mixtral-8x7b-32768'];
+  const modelsToTry = [...new Set([groqModel, ...groqFallbackModels, ...preferredKnownModels, ...availableModels])];
+  let lastError = 'Unknown Groq API error.';
+
+  for (const model of modelsToTry) {
+    triedModels.push(model);
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.GROQ_API_KEY.trim()}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.8,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { content: data?.choices?.[0]?.message?.content, model };
+    }
+
+    let details = '';
+    try {
+      const errorJson = await response.json();
+      details = errorJson?.error?.message || JSON.stringify(errorJson);
+    } catch {
+      details = await response.text();
+    }
+    lastError = `status ${response.status}${details ? `: ${details}` : ''}`;
+
+    // 404/400 often means model is unavailable/invalid: try next fallback.
+    if (response.status === 400 || response.status === 404) {
+      continue;
+    }
+
+    // For non-model errors (auth, rate-limit, server errors), stop retry loop.
+    break;
+  }
+
+  throw new Error(`Groq request failed after trying models [${triedModels.join(', ')}] with ${lastError}`);
+}
 
 function authenticate(req, res, next) {
   const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null;
@@ -135,7 +207,7 @@ app.get('/api/admin/ai-rules', authenticate, allowRoles('ADMIN'), async (_req, r
 app.put('/api/admin/ai-rules', authenticate, allowRoles('ADMIN'), async (req, res, next) => { try { const allowed = ['prioritizeInterdisciplinaryTeams', 'includeSocialImpactScore', 'allowExternalProblemStatements', 'maxRecommendations']; const updates = Object.fromEntries(Object.entries(req.body || {}).filter(([key]) => allowed.includes(key))); if ('maxRecommendations' in updates && (!Number.isInteger(Number(updates.maxRecommendations)) || Number(updates.maxRecommendations) < 1 || Number(updates.maxRecommendations) > 10)) return res.status(400).json({ error: 'maxRecommendations must be between 1 and 10.' }); const config = await SystemConfig.findOneAndUpdate({ key: 'aiRules' }, { value: { ...(await rules()), ...updates, ...(updates.maxRecommendations ? { maxRecommendations: Number(updates.maxRecommendations) } : {}) } }, { upsert: true, new: true }); res.json({ rules: config.value }); } catch (error) { next(error); } });
 
 const systemPrompt = 'You are an AI project recommendation engine for university students. Generate exactly 3 unique, innovative, socially impactful final-year project ideas. Avoid duplicates and near-duplicates of previously approved projects. Respect student preferences. Return only a valid JSON array. Each object must contain title, domain, problemStatement, objective, recommendedTechnologies (array), difficultyLevel (Easy, Medium, or Advanced), expectedOutcomes (array), and estimatedTimeline. The domain must be a concise area such as AI / ML, Web, Cloud, IoT, Blockchain, or Cyber Security.';
-app.post('/api/recommendations', async (req, res, next) => { try { const required = ['groupSize', 'preferredTech', 'difficultyLevel', 'projectDomain', 'previouslyApprovedProjects']; const missing = required.find((field) => req.body?.[field] === undefined || req.body?.[field] === null); if (missing) return res.status(400).json({ error: `Missing required field: ${missing}` }); if (!hasGroqApiKey) return res.status(503).json({ error: 'Groq API key is missing. Add GROQ_API_KEY to .env and restart the server.' }); const archived = await ApprovedProjectArchive.find().select('title keywords -_id').lean(); const blacklist = [...req.body.previouslyApprovedProjects, ...archived.map((item) => `${item.title} ${item.keywords.join(' ')}`)]; const prompt = `${systemPrompt}\n\nAI rules: ${JSON.stringify(await rules())}\nStudent preferences: ${JSON.stringify({ ...req.body, previouslyApprovedProjects: blacklist })}`; const response = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY.trim()}` }, body: JSON.stringify({ model: groqModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }], temperature: 0.8 }) }); if (!response.ok) return res.status(502).json({ error: `Groq request failed with status ${response.status}.` }); const content = (await response.json())?.choices?.[0]?.message?.content; res.json({ projects: parseRecommendedProjects(content) }); } catch (error) { next(error); } });
+app.post('/api/recommendations', async (req, res, next) => { try { const required = ['groupSize', 'preferredTech', 'difficultyLevel', 'projectDomain', 'previouslyApprovedProjects']; const missing = required.find((field) => req.body?.[field] === undefined || req.body?.[field] === null); if (missing) return res.status(400).json({ error: `Missing required field: ${missing}` }); if (!hasGroqApiKey) return res.status(503).json({ error: 'Groq API key is missing. Add GROQ_API_KEY to .env and restart the server.' }); const archived = await ApprovedProjectArchive.find().select('title keywords -_id').lean(); const blacklist = [...req.body.previouslyApprovedProjects, ...archived.map((item) => `${item.title} ${item.keywords.join(' ')}`)]; const prompt = `${systemPrompt}\n\nAI rules: ${JSON.stringify(await rules())}\nStudent preferences: ${JSON.stringify({ ...req.body, previouslyApprovedProjects: blacklist })}`; const { content, model } = await requestGroqCompletion([{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }]); res.json({ projects: parseRecommendedProjects(content), model }); } catch (error) { if (String(error.message || '').includes('Groq request failed')) return res.status(502).json({ error: error.message }); next(error); } });
 
 app.use((error, _req, res, _next) => { console.error(error); if (error instanceof multer.MulterError) return res.status(400).json({ error: error.message }); if (error?.name === 'ValidationError') return res.status(400).json({ error: error.message }); return res.status(500).json({ error: 'The server could not process this request.' }); });
 
