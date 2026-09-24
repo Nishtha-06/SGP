@@ -30,3 +30,19 @@ export async function submitProjectProposal(project) {
   if (!response.ok) throw new Error(payload.error || 'Unable to submit this project proposal.');
   return payload.submission;
 }
+
+export async function uploadProjectProposal(projectId, proposal) {
+  const formData = new FormData();
+  formData.append('documents', proposal);
+  formData.append('documentType', 'SRS');
+  formData.append('proposalUpload', 'true');
+
+  const response = await fetch(`/api/submissions/${projectId}/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${localStorage.getItem('authToken') || ''}` },
+    body: formData,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'Unable to upload this project proposal.');
+  return payload.documents;
+}
