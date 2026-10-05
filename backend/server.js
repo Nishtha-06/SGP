@@ -31,7 +31,7 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI || `http://localhost:${port}/api/auth/google/callback`;
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const googleClient = googleClientId && googleClientSecret ? new OAuth2Client(googleClientId, googleClientSecret, googleRedirectUri) : null;
-const defaultAiRules = { prioritizeInterdisciplinaryTeams: true, includeSocialImpactScore: true, allowExternalProblemStatements: false, maxRecommendations: 3 };
+const defaultAiRules = { prioritizeInterdisciplinaryTeams: false, includeSocialImpactScore: false, allowExternalProblemStatements: false, maxRecommendations: 3 };
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -202,7 +202,147 @@ app.get('/api/submissions/:projectId/documents', authenticate, async (req, res, 
 app.patch('/api/submissions/:projectId/resubmit', authenticate, allowRoles('STUDENT'), async (req, res, next) => { try { const group = await studentGroup(req.user.id); const project = await Project.findOne({ _id: req.params.projectId, group: group?._id }); if (!project) return res.status(404).json({ error: 'Project not found in your group.' }); if (project.status !== 'REVISION_REQUIRED') return res.status(409).json({ error: 'Only projects requiring revision can be resubmitted.' }); const updates = req.body?.project || {}; project.title = updates.title?.trim() || project.title; project.problemStatement = updates.problemStatement?.trim() || project.problemStatement; project.objective = updates.objective?.trim() || project.objective; project.status = 'PENDING'; await project.save(); res.json({ submission: project }); } catch (error) { next(error); } });
 app.get('/api/monitoring/projects', authenticate, allowRoles('CC_FACULTY', 'ADMIN'), async (req, res, next) => { try { const filter = req.user.role === 'ADMIN' ? {} : { department: req.user.department }; const projects = await Project.find(filter).populate('group', 'name').lean(); const ids = projects.map((project) => project._id); const docs = await Document.aggregate([{ $match: { projectId: { $in: ids } } }, { $group: { _id: '$projectId', count: { $sum: 1 } } }]); const counts = Object.fromEntries(docs.map((doc) => [doc._id.toString(), doc.count])); res.json({ projects: projects.map((project) => ({ ...project, documentCount: counts[project._id.toString()] || 0 })) }); } catch (error) { next(error); } });
 
-app.get('/api/admin/analytics', authenticate, allowRoles('ADMIN'), async (_req, res, next) => { try { const [projects, groups, students, departments, workflow, byDepartment] = await Promise.all([Project.countDocuments(), Group.countDocuments(), User.countDocuments({ role: 'STUDENT' }), User.distinct('department', { role: { $ne: 'ADMIN' } }), Project.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]), Project.aggregate([{ $group: { _id: '$department', count: { $sum: 1 } } }])]); const status = Object.fromEntries(workflow.map((item) => [item._id, item.count])); res.json({ totals: { projects, groups, students, departments: departments.length }, workflow: { pending: status.PENDING || 0, approved: status.APPROVED || 0, revisions: status.REVISION_REQUIRED || 0 }, projectsByDepartment: byDepartment.map((item) => ({ department: item._id, count: item.count })) }); } catch (error) { next(error); } });
+app.get('/api/admin/analytics', authenticate, allowRoles('ADMIN'), async (_req, res, next) => {
+  try {
+    const [
+      projects,
+      groups,
+      students,
+      departments,
+      workflow,
+      byDepartment,
+      technologyPopularity,
+      studentTechInterests,
+      studentAreasOfInterest,
+      studentSkills,
+      facultyReviewStatsRaw,
+      difficultyDistribution
+    ] = await Promise.all([
+      Project.countDocuments(),
+      Group.countDocuments(),
+      User.countDocuments({ role: 'STUDENT' }),
+      User.distinct('department', { role: { $ne: 'ADMIN' } }),
+      Project.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Project.aggregate([
+        { $match: { department: { $exists: true, $type: 'string', $ne: '' } } },
+        { $group: { _id: '$department', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } }
+      ]),
+      Project.aggregate([
+        { $unwind: '$technologies' },
+        { $match: { technologies: { $type: 'string', $ne: '' } } },
+        { $group: { _id: '$technologies', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $project: { _id: 0, technology: '$_id', count: 1 } }
+      ]),
+      StudentProfile.aggregate([
+        { $unwind: '$techInterests' },
+        { $match: { techInterests: { $type: 'string', $ne: '' } } },
+        { $group: { _id: '$techInterests', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $project: { _id: 0, interest: '$_id', count: 1 } }
+      ]),
+      StudentProfile.aggregate([
+        { $unwind: '$areasOfInterest' },
+        { $match: { areasOfInterest: { $type: 'string', $ne: '' } } },
+        { $group: { _id: '$areasOfInterest', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $project: { _id: 0, interest: '$_id', count: 1 } }
+      ]),
+      StudentProfile.aggregate([
+        { $unwind: '$skills' },
+        { $match: { skills: { $type: 'string', $ne: '' } } },
+        { $group: { _id: '$skills', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $project: { _id: 0, interest: '$_id', count: 1 } }
+      ]),
+      Review.aggregate([
+        {
+          $group: {
+            _id: '$reviewerId',
+            totalReviews: { $sum: 1 },
+            approved: { $sum: { $cond: [{ $eq: ['$decision', 'APPROVED'] }, 1, 0] } },
+            revisions: { $sum: { $cond: [{ $eq: ['$decision', 'REVISION_REQUIRED'] }, 1, 0] } },
+            averageMarks: { $avg: '$marks' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'faculty'
+          }
+        },
+        {
+          $unwind: {
+            path: '$faculty',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            facultyId: { $toString: '$_id' },
+            facultyName: { $ifNull: ['$faculty.name', 'Unknown Faculty'] },
+            totalReviews: 1,
+            approved: 1,
+            revisions: 1,
+            averageMarks: 1
+          }
+        },
+        { $sort: { totalReviews: -1, facultyName: 1 } }
+      ]),
+      Project.aggregate([
+        { $match: { difficulty: { $exists: true, $type: 'string', $ne: '' } } },
+        { $group: { _id: '$difficulty', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $project: { _id: 0, difficulty: '$_id', count: 1 } }
+      ])
+    ]);
+
+    const status = Object.fromEntries(workflow.map((item) => [item._id, item.count]));
+    const pending = status.PENDING || 0;
+    const approved = status.APPROVED || 0;
+    const revisions = status.REVISION_REQUIRED || 0;
+    const approvalRate = projects > 0 ? Number(((approved / projects) * 100).toFixed(2)) : 0;
+
+    const facultyReviewStatistics = facultyReviewStatsRaw.map((item) => ({
+      facultyId: item.facultyId,
+      facultyName: item.facultyName,
+      totalReviews: item.totalReviews,
+      approved: item.approved,
+      revisions: item.revisions,
+      averageMarks: item.averageMarks !== null && item.averageMarks !== undefined && !Number.isNaN(item.averageMarks)
+        ? Number(Number(item.averageMarks).toFixed(2))
+        : null
+    }));
+
+    res.json({
+      totals: { projects, groups, students, departments: departments.length },
+      workflow: { pending, approved, revisions },
+      projectsByDepartment: byDepartment.map((item) => ({ department: item._id, count: item.count })),
+      technologyPopularity,
+      studentInterestTrends: {
+        technologies: studentTechInterests,
+        areas: studentAreasOfInterest,
+        skills: studentSkills
+      },
+      approvalStatistics: {
+        pending,
+        approved,
+        revisions,
+        total: projects,
+        approvalRate
+      },
+      facultyReviewStatistics,
+      difficultyDistribution,
+      innovationScoreDistribution: null
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 app.get('/api/admin/ai-rules', authenticate, allowRoles('ADMIN'), async (_req, res, next) => { try { res.json({ rules: await rules() }); } catch (error) { next(error); } });
 app.put('/api/admin/ai-rules', authenticate, allowRoles('ADMIN'), async (req, res, next) => { try { const allowed = ['prioritizeInterdisciplinaryTeams', 'includeSocialImpactScore', 'allowExternalProblemStatements', 'maxRecommendations']; const updates = Object.fromEntries(Object.entries(req.body || {}).filter(([key]) => allowed.includes(key))); if ('maxRecommendations' in updates && (!Number.isInteger(Number(updates.maxRecommendations)) || Number(updates.maxRecommendations) < 1 || Number(updates.maxRecommendations) > 10)) return res.status(400).json({ error: 'maxRecommendations must be between 1 and 10.' }); const config = await SystemConfig.findOneAndUpdate({ key: 'aiRules' }, { value: { ...(await rules()), ...updates, ...(updates.maxRecommendations ? { maxRecommendations: Number(updates.maxRecommendations) } : {}) } }, { upsert: true, new: true }); res.json({ rules: config.value }); } catch (error) { next(error); } });
 

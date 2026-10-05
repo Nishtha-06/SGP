@@ -27,3 +27,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ML experiments
+ml/
+
+ml_*.md
+ml_dataset_sample.csv
