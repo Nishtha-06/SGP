@@ -127,7 +127,10 @@ function authenticate(req, res, next) {
 const allowRoles = (...allowed) => (req, res, next) => allowed.includes(req.user.role) ? next() : res.status(403).json({ error: `This action requires one of: ${allowed.join(', ')}.` });
 async function studentGroup(userId) { return Group.findOne({ members: userId }); }
 async function rules() { const config = await SystemConfig.findOne({ key: 'aiRules' }); return config?.value || defaultAiRules; }
-function parseRecommendedProjects(content) {
+function parseRecommendedProjects(content, expectedCount) {
+  let count = Number(expectedCount);
+  if (!Number.isInteger(count) || count < 1 || count > 10) count = 3;
+
   const withoutFence = String(content || '').trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```\s*$/i, '')
@@ -135,8 +138,32 @@ function parseRecommendedProjects(content) {
   const start = withoutFence.indexOf('[');
   const end = withoutFence.lastIndexOf(']');
   if (start === -1 || end === -1 || end < start) throw new Error('Groq did not return a JSON project array.');
-  const projects = JSON.parse(withoutFence.slice(start, end + 1));
-  if (!Array.isArray(projects) || projects.length !== 3) throw new Error('Groq did not return exactly three projects.');
+
+  let projects;
+  try {
+    projects = JSON.parse(withoutFence.slice(start, end + 1));
+  } catch {
+    throw new Error('Groq did not return a valid JSON format.');
+  }
+
+  if (!Array.isArray(projects) || projects.length === 0) throw new Error('Groq did not return any well-formed projects.');
+
+  const requiredStringFields = ['title', 'domain', 'problemStatement', 'objective', 'estimatedTimeline'];
+  const validDifficulties = ['Easy', 'Medium', 'Advanced'];
+
+  projects = projects.filter(p => {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
+    if (!requiredStringFields.every(field => typeof p[field] === 'string' && p[field].trim() !== '')) return false;
+    if (!Array.isArray(p.recommendedTechnologies) || !Array.isArray(p.expectedOutcomes)) return false;
+    if (!validDifficulties.includes(p.difficultyLevel)) return false;
+    return true;
+  });
+
+  if (projects.length === 0) throw new Error('Groq did not return any projects with all required fields.');
+
+  if (projects.length > count) projects = projects.slice(0, count);
+  if (projects.length < count) console.warn(`Warning: AI returned ${projects.length} valid projects, expected ${count}`);
+
   return projects;
 }
 
@@ -344,10 +371,12 @@ app.get('/api/admin/analytics', authenticate, allowRoles('ADMIN'), async (_req, 
   }
 });
 app.get('/api/admin/ai-rules', authenticate, allowRoles('ADMIN'), async (_req, res, next) => { try { res.json({ rules: await rules() }); } catch (error) { next(error); } });
+app.get('/api/admin/archive', authenticate, allowRoles('ADMIN'), async (_req, res, next) => { try { res.json({ archives: await ApprovedProjectArchive.find().populate('projectId').sort({ approvedAt: -1 }).lean() }); } catch (error) { next(error); } });
+app.get('/api/admin/users', authenticate, allowRoles('ADMIN'), async (_req, res, next) => { try { res.json({ users: await User.find().select('_id name email role department').sort({ createdAt: -1 }).lean() }); } catch (error) { next(error); } });
 app.put('/api/admin/ai-rules', authenticate, allowRoles('ADMIN'), async (req, res, next) => { try { const allowed = ['prioritizeInterdisciplinaryTeams', 'includeSocialImpactScore', 'allowExternalProblemStatements', 'maxRecommendations']; const updates = Object.fromEntries(Object.entries(req.body || {}).filter(([key]) => allowed.includes(key))); if ('maxRecommendations' in updates && (!Number.isInteger(Number(updates.maxRecommendations)) || Number(updates.maxRecommendations) < 1 || Number(updates.maxRecommendations) > 10)) return res.status(400).json({ error: 'maxRecommendations must be between 1 and 10.' }); const config = await SystemConfig.findOneAndUpdate({ key: 'aiRules' }, { value: { ...(await rules()), ...updates, ...(updates.maxRecommendations ? { maxRecommendations: Number(updates.maxRecommendations) } : {}) } }, { upsert: true, new: true }); res.json({ rules: config.value }); } catch (error) { next(error); } });
 
-const systemPrompt = 'You are an AI project recommendation engine for university students. Generate exactly 3 unique, innovative, socially impactful final-year project ideas. Avoid duplicates and near-duplicates of previously approved projects. Respect student preferences. Return only a valid JSON array. Each object must contain title, domain, problemStatement, objective, recommendedTechnologies (array), difficultyLevel (Easy, Medium, or Advanced), expectedOutcomes (array), and estimatedTimeline. The domain must be a concise area such as AI / ML, Web, Cloud, IoT, Blockchain, or Cyber Security.';
-app.post('/api/recommendations', async (req, res, next) => { try { const required = ['groupSize', 'preferredTech', 'difficultyLevel', 'projectDomain', 'previouslyApprovedProjects']; const missing = required.find((field) => req.body?.[field] === undefined || req.body?.[field] === null); if (missing) return res.status(400).json({ error: `Missing required field: ${missing}` }); if (!hasGroqApiKey) return res.status(503).json({ error: 'Groq API key is missing. Add GROQ_API_KEY to .env and restart the server.' }); const archived = await ApprovedProjectArchive.find().select('title keywords -_id').lean(); const blacklist = [...req.body.previouslyApprovedProjects, ...archived.map((item) => `${item.title} ${item.keywords.join(' ')}`)]; const prompt = `${systemPrompt}\n\nAI rules: ${JSON.stringify(await rules())}\nStudent preferences: ${JSON.stringify({ ...req.body, previouslyApprovedProjects: blacklist })}`; const { content, model } = await requestGroqCompletion([{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }]); res.json({ projects: parseRecommendedProjects(content), model }); } catch (error) { if (String(error.message || '').includes('Groq request failed')) return res.status(502).json({ error: error.message }); next(error); } });
+const getSystemPrompt = (count) => `You are an AI project recommendation engine for university students. Generate exactly ${count} unique, innovative, socially impactful final-year project ideas. Avoid duplicates and near-duplicates of previously approved projects. Respect student preferences. Return only a valid JSON array. Each object must contain title, domain, problemStatement, objective, recommendedTechnologies (array), difficultyLevel (Easy, Medium, or Advanced), expectedOutcomes (array), and estimatedTimeline. The domain must be a concise area such as AI / ML, Web, Cloud, IoT, Blockchain, or Cyber Security.`;
+app.post('/api/recommendations', async (req, res, next) => { try { const required = ['groupSize', 'preferredTech', 'difficultyLevel', 'projectDomain', 'previouslyApprovedProjects']; const missing = required.find((field) => req.body?.[field] === undefined || req.body?.[field] === null); if (missing) return res.status(400).json({ error: `Missing required field: ${missing}` }); if (!hasGroqApiKey) return res.status(503).json({ error: 'Groq API key is missing. Add GROQ_API_KEY to .env and restart the server.' }); const archived = await ApprovedProjectArchive.find().select('title keywords -_id').lean(); const blacklist = [...req.body.previouslyApprovedProjects, ...archived.map((item) => `${item.title} ${item.keywords.join(' ')}`)]; const currentRules = await rules(); const maxRecs = currentRules.maxRecommendations || 3; const sysPrompt = getSystemPrompt(maxRecs); const prompt = `${sysPrompt}\n\nAI rules: ${JSON.stringify(currentRules)}\nStudent preferences: ${JSON.stringify({ ...req.body, previouslyApprovedProjects: blacklist })}`; const { content, model } = await requestGroqCompletion([{ role: 'system', content: sysPrompt }, { role: 'user', content: prompt }]); res.json({ projects: parseRecommendedProjects(content, maxRecs), model }); } catch (error) { if (String(error.message || '').includes('Groq request failed')) return res.status(502).json({ error: error.message }); next(error); } });
 
 app.use((error, _req, res, _next) => { console.error(error); if (error instanceof multer.MulterError) return res.status(400).json({ error: error.message }); if (error?.name === 'ValidationError') return res.status(400).json({ error: error.message }); return res.status(500).json({ error: 'The server could not process this request.' }); });
 

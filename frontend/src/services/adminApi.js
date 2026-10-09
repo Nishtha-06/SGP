@@ -18,6 +18,14 @@ export async function getAdminAnalytics() {
   return adminRequest('/api/admin/analytics');
 }
 
+export async function getAdminArchive() {
+  return adminRequest('/api/admin/archive');
+}
+
+export async function getAdminUsers() {
+  return adminRequest('/api/admin/users');
+}
+
 export async function getAiRules() {
   return adminRequest('/api/admin/ai-rules');
 }
